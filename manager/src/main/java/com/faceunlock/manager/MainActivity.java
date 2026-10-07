@@ -9,7 +9,7 @@ import android.graphics.Typeface;
 import android.widget.*;
 
 public class MainActivity extends Activity {
- private ProfileStore store; private LinearLayout list; private TextView state; private TextView hardware;
+ private ProfileStore store; private LinearLayout list; private TextView state; private TextView hardware; private CheckBox instant;
 
  @Override public void onCreate(Bundle b){
   super.onCreate(b); store=new ProfileStore(this);
@@ -20,6 +20,9 @@ public class MainActivity extends Activity {
 
   Button on=new Button(this); on.setText("הפעל Face Unlock"); on.setOnClickListener(v->{getPreferences(0).edit().putBoolean("enabled",true).apply(); refreshState();}); r.addView(on);
   Button off=new Button(this); off.setText("כבה Face Unlock"); off.setOnClickListener(v->{getPreferences(0).edit().putBoolean("enabled",false).apply(); refreshState();}); r.addView(off);
+  instant=new CheckBox(this); instant.setText("פתיחה מיידית לאחר זיהוי פנים (בלי החלקה למעלה)"); instant.setTextSize(16); instant.setChecked(getPreferences(0).getBoolean("instant_unlock",false));
+  instant.setOnCheckedChangeListener((button,checked)->getPreferences(0).edit().putBoolean("instant_unlock",checked).apply()); r.addView(instant);
+  TextView hint=new TextView(this); hint.setText("הערה: זו העדפה. המערכת עשויה להגביל אותה לפי הגדרות האבטחה."); hint.setTextSize(13); r.addView(hint);
   Button check=new Button(this); check.setText("בדוק ביומטריה"); check.setOnClickListener(v->refreshHardware()); r.addView(check);
   Button a=new Button(this); a.setText("הוסף פרופיל פנים"); a.setOnClickListener(v->addProfile()); r.addView(a);
   Button d=new Button(this); d.setText("מחק את רשימת הפרופילים"); d.setOnClickListener(v->{store.clear();refresh();}); r.addView(d);
@@ -41,7 +44,9 @@ public class MainActivity extends Activity {
 
  private void refreshState(){
   boolean on=getPreferences(0).getBoolean("enabled",false);
+  boolean iu=getPreferences(0).getBoolean("instant_unlock",false);
   state.setText("\n● Face Unlock: "+(on?"מופעל":"כבוי")+
+   "\n● פתיחה מיידית: "+(iu?"מופעלת":"כבויה")+
    "\n● PIN: נשאר פעיל תמיד"+
    "\n● Fail-Safe: פעיל"+
    "\n● זיהוי מזויף: כבוי"+
