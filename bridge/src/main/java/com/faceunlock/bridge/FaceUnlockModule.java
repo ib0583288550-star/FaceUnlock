@@ -7,12 +7,11 @@ import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam;
 import java.lang.reflect.Method;
 
 /**
- * FaceUnlock bridge. The current hook layer is observational only:
- * it records when the real SystemUI face-auth callback is reached and then
- * always proceeds with the original method.
+ * FaceUnlock bridge. Observation only: it never changes biometric results
+ * and never bypasses Keyguard.
  */
 public final class FaceUnlockModule extends XposedModule {
-    public static final String VERSION = "0.6.0";
+    public static final String VERSION = "0.7.0";
     private static final String SYSTEM_UI = "com.android.systemui";
     private SafetyController safetyController;
 
@@ -25,37 +24,29 @@ public final class FaceUnlockModule extends XposedModule {
 
     @Override
     public void onPackageReady(PackageReadyParam param) {
-        if (!SYSTEM_UI.equals(param.getPackageName())) {
-            return;
-        }
+        if (!SYSTEM_UI.equals(param.getPackageName())) return;
 
         log(50, "FaceUnlock", "SystemUI classloader ready; starting discovery/hooks.");
-
         safetyController = new SafetyController();
         safetyController.start();
 
         try {
             ClassLoader loader = param.getClassLoader();
-
-            ProviderResolver.DiscoveryReport report =
-                ProviderResolver.scan(loader);
+            ProviderResolver.DiscoveryReport report = ProviderResolver.scan(loader);
             log(50, "FaceUnlock", report.toLogString());
 
-            UniversalAuthCompatibility.Report ua =
-                UniversalAuthCompatibility.scan(loader);
+            UniversalAuthCompatibility.Report ua = UniversalAuthCompatibility.scan(loader);
             log(50, "FaceUnlock", ua.toLogString());
 
             int hooks = installObservationHooks(loader);
 
             if (report.found.isEmpty()) {
                 safetyController.failSafe();
-                log(50, "FaceUnlock",
-                    "No supported SystemUI biometric classes found; state=FALLBACK.");
+                log(50, "FaceUnlock", "No supported SystemUI biometric classes found; state=FALLBACK.");
             } else {
                 safetyController.ready();
-                log(50, "FaceUnlock",
-                    "Discovery completed; observationHooks=" + hooks
-                        + "; UniversalAuthCompatible=" + ua.looksCompatible());
+                log(50, "FaceUnlock", "Discovery completed; observationHooks=" + hooks
+                    + "; UniversalAuthCompatible=" + ua.looksCompatible());
             }
         } catch (Throwable t) {
             safetyController.error();
@@ -68,16 +59,29 @@ public final class FaceUnlockModule extends XposedModule {
 
     private int installObservationHooks(ClassLoader loader) {
         int installed = 0;
+
         installed += hookAllNamedMethods(loader,
-                "com.android.keyguard.KeyguardUpdateMonitor",
-                "onFaceAuthenticated");
+            "com.android.keyguard.KeyguardUpdateMonitor", "onFaceAuthenticated", false);
         installed += hookAllNamedMethods(loader,
-                "com.android.systemui.statusbar.phone.BiometricUnlockController",
-                "onFaceAuthenticated");
+            "com.android.systemui.statusbar.phone.BiometricUnlockController",
+            "onFaceAuthenticated", false);
+
+        // These are only lifecycle observations. They never start/stop face
+        // authentication themselves; they only tell SafetyController that an
+        // authentication attempt may have started.
+        installed += hookAllNamedMethods(loader,
+            "com.android.keyguard.KeyguardUpdateMonitor", "updateFaceListeningState", true);
+        installed += hookAllNamedMethods(loader,
+            "com.android.keyguard.KeyguardUpdateMonitor", "requestFaceAuth", true);
+        installed += hookAllNamedMethods(loader,
+            "com.android.systemui.statusbar.phone.BiometricUnlockController",
+            "startListeningForFace", true);
+
         return installed;
     }
 
-    private int hookAllNamedMethods(ClassLoader loader, String className, String methodName) {
+    private int hookAllNamedMethods(ClassLoader loader, String className,
+                                    String methodName, boolean markAuthenticating) {
         int installed = 0;
         try {
             Class<?> c = Class.forName(className, false, loader);
@@ -89,12 +93,19 @@ public final class FaceUnlockModule extends XposedModule {
                         "OBSERVED " + className + "#" + methodName
                             + " args=" + chain.getArgs().size()
                             + " return=" + method.getReturnType().getName());
-                    if ("onFaceAuthenticated".equals(methodName)
-                            && safetyController != null) {
-                        safetyController.faceAuthenticatedObserved();
-                        log(50, "FaceUnlock",
-                            "SafetyController: genuine face-auth callback observed; state=READY.");
+
+                    if (safetyController != null) {
+                        if (markAuthenticating) {
+                            safetyController.authenticating();
+                            log(50, "FaceUnlock",
+                                "SafetyController: face-auth lifecycle observed; state=AUTHENTICATING.");
+                        } else if ("onFaceAuthenticated".equals(methodName)) {
+                            safetyController.faceAuthenticatedObserved();
+                            log(50, "FaceUnlock",
+                                "SafetyController: genuine face-auth callback observed; state=READY.");
+                        }
                     }
+
                     return chain.proceed();
                 });
                 installed++;
