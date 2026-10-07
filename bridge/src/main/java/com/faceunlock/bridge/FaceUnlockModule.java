@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
  * and never bypasses Keyguard.
  */
 public final class FaceUnlockModule extends XposedModule {
-    public static final String VERSION = "0.7.0";
+    public static final String VERSION = "0.8.0";
     private static final String SYSTEM_UI = "com.android.systemui";
     private SafetyController safetyController;
 
@@ -32,21 +32,28 @@ public final class FaceUnlockModule extends XposedModule {
 
         try {
             ClassLoader loader = param.getClassLoader();
+
             ProviderResolver.DiscoveryReport report = ProviderResolver.scan(loader);
             log(50, "FaceUnlock", report.toLogString());
+
+            FaceServiceDiscovery.Report face = FaceServiceDiscovery.scan(loader);
+            log(50, "FaceUnlock", face.toLogString());
 
             UniversalAuthCompatibility.Report ua = UniversalAuthCompatibility.scan(loader);
             log(50, "FaceUnlock", ua.toLogString());
 
             int hooks = installObservationHooks(loader);
 
-            if (report.found.isEmpty()) {
+            if (report.found.isEmpty() || !face.hasFaceFramework()) {
                 safetyController.failSafe();
-                log(50, "FaceUnlock", "No supported SystemUI biometric classes found; state=FALLBACK.");
+                log(50, "FaceUnlock",
+                    "Required biometric/face framework discovery incomplete; state=FALLBACK.");
             } else {
                 safetyController.ready();
-                log(50, "FaceUnlock", "Discovery completed; observationHooks=" + hooks
-                    + "; UniversalAuthCompatible=" + ua.looksCompatible());
+                log(50, "FaceUnlock",
+                    "Discovery completed; observationHooks=" + hooks
+                        + "; FaceFramework=" + face.hasFaceFramework()
+                        + "; UniversalAuthCompatible=" + ua.looksCompatible());
             }
         } catch (Throwable t) {
             safetyController.error();
@@ -66,9 +73,6 @@ public final class FaceUnlockModule extends XposedModule {
             "com.android.systemui.statusbar.phone.BiometricUnlockController",
             "onFaceAuthenticated", false);
 
-        // These are only lifecycle observations. They never start/stop face
-        // authentication themselves; they only tell SafetyController that an
-        // authentication attempt may have started.
         installed += hookAllNamedMethods(loader,
             "com.android.keyguard.KeyguardUpdateMonitor", "updateFaceListeningState", true);
         installed += hookAllNamedMethods(loader,
