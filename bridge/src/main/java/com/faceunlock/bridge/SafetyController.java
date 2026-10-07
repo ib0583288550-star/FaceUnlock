@@ -44,6 +44,13 @@ public final class SafetyController {
         }
     }
 
+    /** Marks a genuine face-auth failure/error and immediately enables fallback. */
+    public synchronized void faceAuthFailed() {
+        cancelWatchdogLocked();
+        operationStartedAt = 0L;
+        if (state != State.DISABLED) state = State.FALLBACK;
+    }
+
     /** Marks that a genuine SystemUI face-auth callback was observed. */
     public synchronized void faceAuthenticatedObserved() {
         cancelWatchdogLocked();
