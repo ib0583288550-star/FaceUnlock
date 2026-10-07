@@ -2,48 +2,37 @@ name: Analyze Face APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/trigger-analysis.txt]
 
 permissions:
-  contents: write
+  contents: read
+  actions: write
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
       - name: Download APK
-        run: |
-          curl -L --fail --retry 3             -o app.apk             "https://github.com/ib0583288550-star/FaceUnlock/releases/download/v1.0.0/1.8_032819.apk"
-
+        run: curl -L --fail --retry 3 -o app.apk "https://github.com/ib0583288550-star/FaceUnlock/releases/download/v1.0.0/1.8_032819.apk"
       - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip file
-          curl -L --fail -o jadx.zip             "https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip"
+          curl -L --fail -o jadx.zip "https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip"
           unzip -q jadx.zip -d jadx
           chmod +x jadx/bin/jadx
-
       - name: Inspect APK
         run: |
           mkdir -p analysis
           file app.apk > analysis/file.txt
           unzip -l app.apk > analysis/zip-list.txt
-          unzip -p app.apk AndroidManifest.xml > analysis/AndroidManifest.binary.xml || true
           jadx/bin/jadx --show-bad-code --no-res --no-imports -d analysis/source app.apk > analysis/jadx.log 2>&1 || true
-          {
-            echo "=== APK FILE ==="
-            cat analysis/file.txt
-            echo
-            echo "=== DEX FILES ==="
-            unzip -l app.apk | grep -E 'classes([0-9]+)?\.dex$' || true
-            echo
-            echo "=== JADX LOG (last 200 lines) ==="
-            tail -n 200 analysis/jadx.log || true
-          } > analysis/REPORT.txt
-
-      - name: Commit analysis
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add analysis
-          git commit -m "Analyze Face APK v1.0.0" || exit 0
-          git push
+          { echo "=== APK FILE ==="; cat analysis/file.txt; echo; echo "=== DEX FILES ==="; unzip -l app.apk | grep -E 'classes([0-9]+)?\.dex$' || true; echo; echo "=== JADX LOG ==="; tail -n 200 analysis/jadx.log || true; } > analysis/REPORT.txt
+      - name: Upload analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: face-apk-analysis
+          path: analysis/
+          retention-days: 7
