@@ -3,6 +3,7 @@ package com.faceunlock.manager;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.hardware.biometrics.BiometricManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.graphics.Typeface;
 import android.widget.*;
@@ -28,6 +29,16 @@ public class MainActivity extends Activity {
   setContentView(r); refresh(); refreshState(); refreshHardware();
  }
 
+ private String status(BiometricManager bm, int authenticators){
+  switch(bm.canAuthenticate(authenticators)){
+   case BiometricManager.BIOMETRIC_SUCCESS: return "זמין";
+   case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE: return "אין חומרה מזוהה";
+   case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE: return "חומרה לא זמינה כרגע";
+   case BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED: return "יש חומרה, אין הרשמה";
+   default: return "קוד מצב: "+bm.canAuthenticate(authenticators);
+  }
+ }
+
  private void refreshState(){
   boolean on=getPreferences(0).getBoolean("enabled",false);
   state.setText("\n● Face Unlock: "+(on?"מופעל":"כבוי")+
@@ -40,16 +51,14 @@ public class MainActivity extends Activity {
  private void refreshHardware(){
   BiometricManager bm=getSystemService(BiometricManager.class);
   if(bm==null){hardware.setText("● ביומטריה: שירות לא זמין");return;}
-  int r=bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG);
-  String s;
-  switch(r){
-   case BiometricManager.BIOMETRIC_SUCCESS: s="זמינה ביומטריה חזקה"; break;
-   case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE: s="לא נמצאה חומרת ביומטריה חזקה"; break;
-   case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE: s="חומרת ביומטריה כרגע לא זמינה"; break;
-   case BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED: s="יש חומרה, אבל אין הרשמה ביומטרית"; break;
-   default: s="מצב ביומטריה: "+r;
-  }
-  hardware.setText("● בדיקת Android: "+s);
+  StringBuilder s=new StringBuilder();
+  s.append("● Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
+  s.append("● מכשיר: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");
+  s.append("● BIOMETRIC_WEAK: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_WEAK)).append("\n");
+  s.append("● BIOMETRIC_STRONG: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_STRONG)).append("\n");
+  s.append("● WEAK + PIN: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL)).append("\n");
+  s.append("● הערה: הבדיקה אינה מזהה לבדה אם החיישן הוא פנים או טביעת אצבע.");
+  hardware.setText(s.toString());
  }
 
  private void addProfile(){
