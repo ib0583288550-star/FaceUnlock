@@ -8,6 +8,6 @@ public final class FaceUnlockModule extends XposedModule {
 
     @Override
     public void onModuleLoaded(ModuleLoadedParam param) {
-        log(io.github.libxposed.api.XposedInterface.LogLevel.INFO, "FaceUnlock", "Bridge loaded; diagnostic mode only.");
+        log("FaceUnlock Bridge loaded; diagnostic mode only.");
     }
 }
