@@ -1,16 +1,13 @@
 package com.faceunlock.bridge;
 
 import io.github.libxposed.api.XposedModule;
+import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam;
 
-/**
- * Diagnostic-only modern LSPosed entry point.
- * It deliberately does not modify biometric results or Keyguard state.
- */
 public final class FaceUnlockModule extends XposedModule {
-    public static final String VERSION = "0.3.0";
+    public static final String VERSION = "0.3.1";
 
     @Override
-    public void onModuleLoaded() {
-        log("FaceUnlock Bridge loaded; diagnostic mode only.");
+    public void onModuleLoaded(ModuleLoadedParam param) {
+        log(io.github.libxposed.api.XposedInterface.LogLevel.INFO, "FaceUnlock", "Bridge loaded; diagnostic mode only.");
     }
 }
