@@ -2,6 +2,11 @@ name: Analyze Face APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/trigger-analysis.txt
 
 permissions:
   contents: write
@@ -34,7 +39,7 @@ jobs:
             cat analysis/file.txt
             echo
             echo "=== DEX FILES ==="
-            unzip -l app.apk | grep -E 'classes([0-9]+)?\\.dex$' || true
+            unzip -l app.apk | grep -E 'classes([0-9]+)?\.dex$' || true
             echo
             echo "=== JADX LOG (last 200 lines) ==="
             tail -n 200 analysis/jadx.log || true
