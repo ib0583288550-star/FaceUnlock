@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 public final class FaceUnlockModule extends XposedModule {
     public static final String VERSION = "0.6.0";
     private static final String SYSTEM_UI = "com.android.systemui";
+    private SafetyController safetyController;
 
     @Override
     public void onModuleLoaded(ModuleLoadedParam param) {
@@ -30,8 +31,8 @@ public final class FaceUnlockModule extends XposedModule {
 
         log(50, "FaceUnlock", "SystemUI classloader ready; starting discovery/hooks.");
 
-        SafetyController safety = new SafetyController();
-        safety.start();
+        safetyController = new SafetyController();
+        safetyController.start();
 
         try {
             ClassLoader loader = param.getClassLoader();
@@ -47,17 +48,17 @@ public final class FaceUnlockModule extends XposedModule {
             int hooks = installObservationHooks(loader);
 
             if (report.found.isEmpty()) {
-                safety.failSafe();
+                safetyController.failSafe();
                 log(50, "FaceUnlock",
                     "No supported SystemUI biometric classes found; state=FALLBACK.");
             } else {
-                safety.ready();
+                safetyController.ready();
                 log(50, "FaceUnlock",
                     "Discovery completed; observationHooks=" + hooks
                         + "; UniversalAuthCompatible=" + ua.looksCompatible());
             }
         } catch (Throwable t) {
-            safety.error();
+            safetyController.error();
             log(50, "FaceUnlock", "SystemUI discovery/hook setup error; state=ERROR.");
         }
 
@@ -88,6 +89,12 @@ public final class FaceUnlockModule extends XposedModule {
                         "OBSERVED " + className + "#" + methodName
                             + " args=" + chain.getArgs().length
                             + " return=" + method.getReturnType().getName());
+                    if ("onFaceAuthenticated".equals(methodName)
+                            && safetyController != null) {
+                        safetyController.faceAuthenticatedObserved();
+                        log(50, "FaceUnlock",
+                            "SafetyController: genuine face-auth callback observed; state=READY.");
+                    }
                     return chain.proceed();
                 });
                 installed++;
