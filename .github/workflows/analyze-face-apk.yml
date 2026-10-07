@@ -2,11 +2,6 @@ name: Analyze Face APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/trigger-analysis.txt
 
 permissions:
   contents: write
