@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
   PackageManager pm=getPackageManager();
   boolean faceFeature=Build.VERSION.SDK_INT>=29 && pm.hasSystemFeature(PackageManager.FEATURE_FACE);
   StringBuilder s=new StringBuilder();
-  s.append("● Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append("\n");
+  s.append("● Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
   s.append("● מכשיר: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");
   s.append("● FEATURE_FACE: ").append(faceFeature?"קיים":"לא מדווח").append("\n");
   s.append("● BIOMETRIC_WEAK: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_WEAK)).append("\n");
