@@ -4,6 +4,7 @@ import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam;
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
@@ -124,8 +125,23 @@ public final class FaceUnlockModule extends XposedModule {
                             log(50, "FaceUnlock", "FACE_SUCCESS_OBSERVED userId="
                                     + observation.userId + " strong="
                                     + observation.isStrongBiometric + " method=" + methodName);
-                            safetyController.faceAuthenticatedObserved();
-                            log(50, "FaceUnlock", "SafetyController: genuine face-auth success path observed; state=READY.");
+
+                            int currentUserId = resolveCurrentUserId();
+                            if (observation.userId < 0 || currentUserId < 0) {
+                                safetyController.failSafe();
+                                log(50, "FaceUnlock",
+                                    "Face success identity could not be validated; state=FALLBACK.");
+                            } else if (observation.userId != currentUserId) {
+                                safetyController.failSafe();
+                                log(50, "FaceUnlock",
+                                    "Face success rejected: authUserId=" + observation.userId
+                                        + " currentUserId=" + currentUserId
+                                        + "; state=FALLBACK.");
+                            } else {
+                                safetyController.faceAuthenticatedObserved();
+                                log(50, "FaceUnlock",
+                                    "Face success identity validated for current user; state=READY.");
+                            }
                         }
                     }
                     return chain.proceed();
@@ -136,6 +152,20 @@ public final class FaceUnlockModule extends XposedModule {
             log(40, "FaceUnlock", "Observation hook unavailable: " + className + "#" + methodName);
         }
         return installed;
+    }
+
+    private int resolveCurrentUserId() {
+        try {
+            Class<?> activityManager = Class.forName("android.app.ActivityManager");
+            Method getCurrentUser = activityManager.getDeclaredMethod("getCurrentUser");
+            getCurrentUser.setAccessible(true);
+            Object userInfo = getCurrentUser.invoke(null);
+            if (userInfo == null) return -1;
+            Field id = userInfo.getClass().getField("id");
+            return id.getInt(userInfo);
+        } catch (Throwable ignored) {
+            return -1;
+        }
     }
 
     private static final class FaceAuthObservation {
