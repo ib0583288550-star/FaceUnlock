@@ -162,15 +162,33 @@ public final class FaceUnlockModule extends XposedModule {
     private int resolveCurrentUserId() {
         try {
             Class<?> activityManager = Class.forName("android.app.ActivityManager");
-            Method getCurrentUser = activityManager.getDeclaredMethod("getCurrentUser");
-            getCurrentUser.setAccessible(true);
-            Object userInfo = getCurrentUser.invoke(null);
-            if (userInfo == null) return -1;
-            Field id = userInfo.getClass().getField("id");
-            return id.getInt(userInfo);
+            try {
+                Method getCurrentUser = activityManager.getDeclaredMethod("getCurrentUser");
+                getCurrentUser.setAccessible(true);
+                Object userInfo = getCurrentUser.invoke(null);
+                if (userInfo != null) {
+                    Field id = userInfo.getClass().getField("id");
+                    return id.getInt(userInfo);
+                }
+            } catch (Throwable ignored) {
+                // Newer Android/SystemUI variants may expose current user through ActivityManager.getService().
+            }
+
+            Method getService = activityManager.getDeclaredMethod("getService");
+            getService.setAccessible(true);
+            Object service = getService.invoke(null);
+            if (service != null) {
+                Method getCurrentUser = service.getClass().getMethod("getCurrentUser");
+                Object userInfo = getCurrentUser.invoke(service);
+                if (userInfo != null) {
+                    Field id = userInfo.getClass().getField("id");
+                    return id.getInt(userInfo);
+                }
+            }
         } catch (Throwable ignored) {
-            return -1;
+            // User identity is safety-critical: failure means fail-safe, never forced unlock.
         }
+        return -1;
     }
 
     private static final class FaceAuthObservation {
