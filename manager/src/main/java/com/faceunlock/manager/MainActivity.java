@@ -2,6 +2,7 @@ package com.faceunlock.manager;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.pm.PackageManager;
 import android.hardware.biometrics.BiometricManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,7 +22,10 @@ public class MainActivity extends Activity {
   Button on=new Button(this); on.setText("הפעל Face Unlock"); on.setOnClickListener(v->{getPreferences(0).edit().putBoolean("enabled",true).apply(); refreshState();}); r.addView(on);
   Button off=new Button(this); off.setText("כבה Face Unlock"); off.setOnClickListener(v->{getPreferences(0).edit().putBoolean("enabled",false).apply(); refreshState();}); r.addView(off);
   instant=new CheckBox(this); instant.setText("פתיחה מיידית לאחר זיהוי פנים (בלי החלקה למעלה)"); instant.setTextSize(16); instant.setChecked(getPreferences(0).getBoolean("instant_unlock",false));
-  instant.setOnCheckedChangeListener((button,checked)->getPreferences(0).edit().putBoolean("instant_unlock",checked).apply()); r.addView(instant);
+  instant.setOnCheckedChangeListener((button,checked)->{
+   getPreferences(0).edit().putBoolean("instant_unlock",checked).apply();
+   refreshState();
+  }); r.addView(instant);
   TextView hint=new TextView(this); hint.setText("הערה: זו העדפה. המערכת עשויה להגביל אותה לפי הגדרות האבטחה."); hint.setTextSize(13); r.addView(hint);
   Button check=new Button(this); check.setText("בדוק ביומטריה"); check.setOnClickListener(v->refreshHardware()); r.addView(check);
   Button a=new Button(this); a.setText("הוסף פרופיל פנים"); a.setOnClickListener(v->addProfile()); r.addView(a);
@@ -56,13 +60,16 @@ public class MainActivity extends Activity {
  private void refreshHardware(){
   BiometricManager bm=getSystemService(BiometricManager.class);
   if(bm==null){hardware.setText("● ביומטריה: שירות לא זמין");return;}
+  PackageManager pm=getPackageManager();
+  boolean faceFeature=Build.VERSION.SDK_INT>=29 && pm.hasSystemFeature(PackageManager.FEATURE_FACE);
   StringBuilder s=new StringBuilder();
-  s.append("● Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
+  s.append("● Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append("\n");
   s.append("● מכשיר: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");
+  s.append("● FEATURE_FACE: ").append(faceFeature?"קיים":"לא מדווח").append("\n");
   s.append("● BIOMETRIC_WEAK: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_WEAK)).append("\n");
   s.append("● BIOMETRIC_STRONG: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_STRONG)).append("\n");
   s.append("● WEAK + PIN: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL)).append("\n");
-  s.append("● הערה: הבדיקה אינה מזהה לבדה אם החיישן הוא פנים או טביעת אצבע.");
+  s.append("● הערה: FEATURE_FACE הוא אינדיקציה למערכת; הוא לא מזהה לבדו את חבילת ה-Provider/HAL.");
   hardware.setText(s.toString());
  }
 
