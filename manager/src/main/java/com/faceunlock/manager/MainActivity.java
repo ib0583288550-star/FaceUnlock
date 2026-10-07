@@ -2,7 +2,9 @@ package com.faceunlock.manager;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.provider.Settings;
 import android.hardware.biometrics.BiometricManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -28,6 +30,7 @@ public class MainActivity extends Activity {
   }); r.addView(instant);
   TextView hint=new TextView(this); hint.setText("הערה: זו העדפה. המערכת עשויה להגביל אותה לפי הגדרות האבטחה."); hint.setTextSize(13); r.addView(hint);
   Button check=new Button(this); check.setText("בדוק ביומטריה"); check.setOnClickListener(v->refreshHardware()); r.addView(check);
+  Button enroll=new Button(this); enroll.setText("פתח הגדרות רישום ביומטריה"); enroll.setOnClickListener(v->openBiometricEnrollment()); r.addView(enroll);
   Button a=new Button(this); a.setText("הוסף פרופיל פנים"); a.setOnClickListener(v->addProfile()); r.addView(a);
   Button d=new Button(this); d.setText("מחק את רשימת הפרופילים"); d.setOnClickListener(v->{store.clear();refresh();}); r.addView(d);
 
@@ -71,6 +74,18 @@ public class MainActivity extends Activity {
   s.append("● WEAK + PIN: ").append(status(bm,BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL)).append("\n");
   s.append("● הערה: FEATURE_FACE הוא אינדיקציה למערכת; הוא לא מזהה לבדו את חבילת ה-Provider/HAL.");
   hardware.setText(s.toString());
+ }
+
+ private void openBiometricEnrollment(){
+  try {
+   Intent i=new Intent(Settings.ACTION_BIOMETRIC_ENROLL);
+   i.putExtra(Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+    BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+   startActivity(i);
+  } catch(Exception e){
+   try { startActivity(new Intent(Settings.ACTION_SECURITY_SETTINGS)); }
+   catch(Exception ignored) {}
+  }
  }
 
  private void addProfile(){
