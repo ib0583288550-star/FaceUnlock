@@ -5,8 +5,6 @@ public final class SafetyController {
 
     private State state = State.DISABLED;
     private long operationStartedAt = 0L;
-
-    // Short upper bound for lock-screen responsiveness.
     private long timeoutMs = 3000L;
 
     public synchronized State getState() { return state; }
@@ -35,6 +33,14 @@ public final class SafetyController {
         if (state == State.READY || state == State.STARTING) {
             operationStartedAt = System.currentTimeMillis();
             state = State.AUTHENTICATING;
+        }
+    }
+
+    /** Marks that a genuine SystemUI face-auth callback was observed. */
+    public synchronized void faceAuthenticatedObserved() {
+        if (state == State.AUTHENTICATING || state == State.READY) {
+            operationStartedAt = 0L;
+            state = State.READY;
         }
     }
 
