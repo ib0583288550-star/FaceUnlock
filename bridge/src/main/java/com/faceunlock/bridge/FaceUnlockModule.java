@@ -19,6 +19,10 @@ public final class FaceUnlockModule extends XposedModule {
 
             log(50, "FaceUnlock", report.toLogString());
 
+            UniversalAuthCompatibility.Report ua =
+                UniversalAuthCompatibility.scan(param.getClassLoader());
+            log(50, "FaceUnlock", ua.toLogString());
+
             if (report.found.isEmpty()) {
                 safety.failSafe();
                 log(50, "FaceUnlock",
