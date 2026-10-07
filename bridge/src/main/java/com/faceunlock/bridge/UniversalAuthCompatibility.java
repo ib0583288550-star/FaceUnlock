@@ -6,28 +6,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Compatibility discovery for devices where UniversalAuth (or a similar
- * LSPosed module) already provides the SystemUI face-unlock integration.
- *
- * This class is intentionally observational: it does not call unlock APIs,
- * alter authentication results, bypass Keyguard, or send UniversalAuth
- * unlock broadcasts.
+ * Observational compatibility discovery for UniversalAuth-style SystemUI
+ * integrations. It does not invoke hooks, change biometric results, bypass
+ * Keyguard, or send unlock broadcasts.
  */
 public final class UniversalAuthCompatibility {
     private UniversalAuthCompatibility() {}
 
+    private static final String[] TARGETS = {
+        "com.android.keyguard.KeyguardUpdateMonitor",
+        "com.android.systemui.statusbar.phone.CentralSurfaces",
+        "com.android.systemui.statusbar.phone.StatusBar",
+        "com.android.systemui.statusbar.phone.BiometricUnlockController"
+    };
+
     public static Report scan(ClassLoader loader) {
         List<String> found = new ArrayList<>();
 
-        scanClass(loader,
-                "com.android.keyguard.KeyguardUpdateMonitor",
-                found);
-        scanClass(loader,
-                "com.android.systemui.statusbar.phone.CentralSurfaces",
-                found);
-        scanClass(loader,
-                "com.android.systemui.statusbar.phone.StatusBar",
-                found);
+        for (String name : TARGETS) {
+            scanClass(loader, name, found);
+        }
 
         return new Report(found);
     }
@@ -38,26 +36,50 @@ public final class UniversalAuthCompatibility {
 
             for (Method m : c.getDeclaredMethods()) {
                 String n = m.getName();
-                if (n.contains("FaceAuthenticated")
-                        || n.contains("BiometricUnlockController")
-                        || n.contains("FaceAuth")
-                        || n.contains("Unlock")) {
-                    found.add("METHOD " + name + "#" + n);
+                if (isInterestingMethod(n)) {
+                    found.add("METHOD " + name + "#" + n
+                            + signature(m));
                 }
             }
 
             for (Field f : c.getDeclaredFields()) {
                 String n = f.getName();
-                if (n.contains("BiometricUnlockController")
-                        || n.contains("biometricUnlockController")
-                        || n.contains("KeyguardUpdateMonitor")
-                        || n.contains("keyguardUpdateMonitor")) {
-                    found.add("FIELD " + name + "#" + n);
+                if (isInterestingField(n)) {
+                    found.add("FIELD " + name + "#" + n
+                            + ":" + f.getType().getName());
                 }
             }
         } catch (Throwable ignored) {
             // Discovery is best-effort and must never affect SystemUI.
         }
+    }
+
+    private static boolean isInterestingMethod(String name) {
+        return name.contains("FaceAuthenticated")
+                || name.contains("BiometricUnlockController")
+                || name.contains("FaceAuth")
+                || name.contains("FaceListening")
+                || name.contains("UpdateFace")
+                || name.contains("Unlock");
+    }
+
+    private static boolean isInterestingField(String name) {
+        return name.contains("BiometricUnlockController")
+                || name.contains("biometricUnlockController")
+                || name.contains("KeyguardUpdateMonitor")
+                || name.contains("keyguardUpdateMonitor")
+                || name.contains("Face");
+    }
+
+    private static String signature(Method m) {
+        StringBuilder s = new StringBuilder("(");
+        Class<?>[] p = m.getParameterTypes();
+        for (int i = 0; i < p.length; i++) {
+            if (i > 0) s.append(",");
+            s.append(p[i].getName());
+        }
+        s.append("):").append(m.getReturnType().getName());
+        return s.toString();
     }
 
     public static final class Report {
