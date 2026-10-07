@@ -11,6 +11,7 @@ import java.util.List;
  * Keyguard, or send unlock broadcasts.
  */
 public final class UniversalAuthCompatibility {
+    public static final String UNIVERSAL_AUTH_PACKAGE = "ax.nd.universalauth";
     private UniversalAuthCompatibility() {}
 
     private static final String[] TARGETS = {
@@ -90,6 +91,7 @@ public final class UniversalAuthCompatibility {
         }
 
         public boolean looksCompatible() {
+            // UniversalAuth compatibility is observational only; no calls into the module are made.
             for (String item : found) {
                 if (item.contains("FaceAuthenticated")
                         || item.contains("BiometricUnlockController")) {
