@@ -5,7 +5,9 @@ public final class SafetyController {
 
     private State state = State.DISABLED;
     private long operationStartedAt = 0L;
-    private long timeoutMs = 8000L;
+
+    // Short upper bound for lock-screen responsiveness.
+    private long timeoutMs = 3000L;
 
     public synchronized State getState() { return state; }
 
