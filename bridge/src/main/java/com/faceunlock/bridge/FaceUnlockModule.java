@@ -120,6 +120,10 @@ public final class FaceUnlockModule extends XposedModule {
                         if (markAuthenticating) {
                             safetyController.authenticating();
                             log(50, "FaceUnlock", "SafetyController: face-auth lifecycle observed; state=AUTHENTICATING.");
+                        } else if ("handleFaceAuthFailed".equals(methodName)
+                                || "handleFaceError".equals(methodName)) {
+                            safetyController.faceAuthFailed();
+                            log(50, "FaceUnlock", "Face authentication failure/error observed; state=FALLBACK.");
                         } else if ("onFaceAuthenticated".equals(methodName)
                                 || "handleFaceAuthenticated".equals(methodName)) {
                             FaceAuthObservation observation = inspectFaceAuthArguments(method, args);
