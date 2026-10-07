@@ -64,6 +64,7 @@ public final class FaceUnlockModule extends XposedModule {
         installed += hookAllNamedMethods(loader, "com.android.keyguard.KeyguardUpdateMonitor", "handleFaceAuthFailed", false);
         installed += hookAllNamedMethods(loader, "com.android.keyguard.KeyguardUpdateMonitor", "handleFaceError", false);
         installed += hookAllNamedMethods(loader, "com.android.systemui.statusbar.phone.BiometricUnlockController", "onFaceAuthenticated", false);
+        installed += hookAllNamedMethods(loader, "com.android.systemui.statusbar.phone.BiometricUnlockController", "onBiometricAuthenticated", false);
         installed += hookAllNamedMethods(loader, "com.android.keyguard.KeyguardUpdateMonitor", "updateFaceListeningState", true);
         installed += hookAllNamedMethods(loader, "com.android.keyguard.KeyguardUpdateMonitor", "requestFaceAuth", true);
         installed += hookAllNamedMethods(loader, "com.android.systemui.statusbar.phone.BiometricUnlockController", "startListeningForFace", true);
