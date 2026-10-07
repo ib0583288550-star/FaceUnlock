@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
  * and never bypasses Keyguard.
  */
 public final class FaceUnlockModule extends XposedModule {
-    public static final String VERSION = "0.8.0";
+    public static final String VERSION = "0.9.0";
     private static final String SYSTEM_UI = "com.android.systemui";
     private SafetyController safetyController;
 
@@ -70,6 +70,12 @@ public final class FaceUnlockModule extends XposedModule {
         installed += hookAllNamedMethods(loader,
             "com.android.keyguard.KeyguardUpdateMonitor", "onFaceAuthenticated", false);
         installed += hookAllNamedMethods(loader,
+            "com.android.keyguard.KeyguardUpdateMonitor", "handleFaceAuthenticated", false);
+        installed += hookAllNamedMethods(loader,
+            "com.android.keyguard.KeyguardUpdateMonitor", "handleFaceAuthFailed", false);
+        installed += hookAllNamedMethods(loader,
+            "com.android.keyguard.KeyguardUpdateMonitor", "handleFaceError", false);
+        installed += hookAllNamedMethods(loader,
             "com.android.systemui.statusbar.phone.BiometricUnlockController",
             "onFaceAuthenticated", false);
 
@@ -84,6 +90,23 @@ public final class FaceUnlockModule extends XposedModule {
         return installed;
     }
 
+    private String describeArgs(Object[] args) {
+        StringBuilder s = new StringBuilder("[");
+        for (int i = 0; i < args.length; i++) {
+            if (i > 0) s.append(", ");
+            Object value = args[i];
+            if (value == null) {
+                s.append("null");
+            } else if (value instanceof Number || value instanceof Boolean
+                    || value instanceof Character || value instanceof String) {
+                s.append(String.valueOf(value));
+            } else {
+                s.append(value.getClass().getName());
+            }
+        }
+        return s.append("]").toString();
+    }
+
     private int hookAllNamedMethods(ClassLoader loader, String className,
                                     String methodName, boolean markAuthenticating) {
         int installed = 0;
@@ -96,6 +119,7 @@ public final class FaceUnlockModule extends XposedModule {
                     log(50, "FaceUnlock",
                         "OBSERVED " + className + "#" + methodName
                             + " args=" + chain.getArgs().size()
+                            + " values=" + describeArgs(chain.getArgs().toArray())
                             + " return=" + method.getReturnType().getName());
 
                     if (safetyController != null) {
@@ -103,10 +127,11 @@ public final class FaceUnlockModule extends XposedModule {
                             safetyController.authenticating();
                             log(50, "FaceUnlock",
                                 "SafetyController: face-auth lifecycle observed; state=AUTHENTICATING.");
-                        } else if ("onFaceAuthenticated".equals(methodName)) {
+                        } else if ("onFaceAuthenticated".equals(methodName)
+                                || "handleFaceAuthenticated".equals(methodName)) {
                             safetyController.faceAuthenticatedObserved();
                             log(50, "FaceUnlock",
-                                "SafetyController: genuine face-auth callback observed; state=READY.");
+                                "SafetyController: genuine face-auth success path observed; state=READY.");
                         }
                     }
 
