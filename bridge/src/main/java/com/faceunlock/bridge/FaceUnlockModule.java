@@ -87,7 +87,7 @@ public final class FaceUnlockModule extends XposedModule {
                 hook(method).intercept(chain -> {
                     log(50, "FaceUnlock",
                         "OBSERVED " + className + "#" + methodName
-                            + " args=" + chain.getArgs().length
+                            + " args=" + chain.getArgs().size()
                             + " return=" + method.getReturnType().getName());
                     if ("onFaceAuthenticated".equals(methodName)
                             && safetyController != null) {
