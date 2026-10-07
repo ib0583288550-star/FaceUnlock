@@ -1,6 +1,7 @@
 package com.faceunlock.manager;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.graphics.Typeface;
 import android.widget.*;
