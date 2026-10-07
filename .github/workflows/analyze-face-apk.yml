@@ -19,20 +19,35 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip file
+          sudo apt-get install -y unzip file aapt
           curl -L --fail -o jadx.zip "https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip"
           unzip -q jadx.zip -d jadx
           chmod +x jadx/bin/jadx
-      - name: Inspect APK
+      - name: Targeted analysis
         run: |
           mkdir -p analysis
-          file app.apk > analysis/file.txt
+          aapt dump badging app.apk > analysis/badging.txt 2>&1 || true
           unzip -l app.apk > analysis/zip-list.txt
+          unzip -p app.apk classes.dex | strings > analysis/classes-strings.txt
+          unzip -p app.apk classes2.dex | strings >> analysis/classes-strings.txt
+          grep -Ei 'face|biometric|unlock|keyguard|systemui|authentic|universalauth|xposed|root' analysis/classes-strings.txt | sort -u > analysis/hits.txt || true
           jadx/bin/jadx --show-bad-code --no-res --no-imports -d analysis/source app.apk > analysis/jadx.log 2>&1 || true
-          { echo "=== APK FILE ==="; cat analysis/file.txt; echo; echo "=== DEX FILES ==="; unzip -l app.apk | grep -E 'classes([0-9]+)?\.dex$' || true; echo; echo "=== JADX LOG ==="; tail -n 200 analysis/jadx.log || true; } > analysis/REPORT.txt
+          find analysis/source -type f -name '*.java' | head -200 > analysis/source-files.txt || true
+          grep -RilE 'onFaceAuthenticated|BiometricUnlockController|KeyguardUpdateMonitor|faceAuthenticated|unlockAllowed|startWakeAndUnlock|bypass-keyguard|EXTRA_BYPASS_KEYGUARD' analysis/source 2>/dev/null | head -200 > analysis/relevant-files.txt || true
+          {
+            echo "=== BADGING ==="; cat analysis/badging.txt
+            echo
+            echo "=== RELEVANT STRING HITS ==="; cat analysis/hits.txt
+            echo
+            echo "=== SOURCE FILE COUNT ==="; find analysis/source -type f -name '*.java' | wc -l
+            echo
+            echo "=== RELEVANT SOURCE FILES ==="; cat analysis/relevant-files.txt
+            echo
+            echo "=== JADX TAIL ==="; tail -n 100 analysis/jadx.log
+          } > analysis/REPORT.txt
       - name: Upload analysis artifact
         uses: actions/upload-artifact@v4
         with:
-          name: face-apk-analysis
+          name: face-apk-analysis-targeted
           path: analysis/
           retention-days: 7
